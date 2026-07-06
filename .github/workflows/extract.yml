@@ -1,0 +1,46 @@
+name: Extract Any Zip to Root
+
+on:
+  push:
+    branches:
+      - main  # Make sure this matches your default branch name (e.g., main or master)
+
+jobs:
+  extract-and-process:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and extract any zip file
+        run: |
+          # Looks for any file ending in .zip in the root directory
+          ZIP_FILE=$(find . -maxdepth 1 -iname "*.zip" | head -n 1)
+          
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Found zip file to extract: $ZIP_FILE"
+            unzip -o "$ZIP_FILE" -d .
+            rm "$ZIP_FILE"
+          else
+            echo "Error: No .zip file found in the root directory!"
+            exit 1
+          fi
+
+      - name: Commit and Push extracted files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add .
+          
+          if ! git diff --cached --quiet; then
+            # adding [skip ci] prevents the action from triggering itself again
+            git commit -m "Automated unzip: Extracted contents to root [skip ci]"
+            git push
+          else
+            echo "No changes detected to commit."
+          fi
